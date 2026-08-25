@@ -1,0 +1,5 @@
+app/output/*.json
+app/output/*.mp3
+app/output/*.md
+*__pycache__/*
+.venv
