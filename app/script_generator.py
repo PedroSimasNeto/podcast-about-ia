@@ -4,12 +4,13 @@ Gera o roteiro de diálogo (podcast) a partir das notícias coletadas,
 que confere se as falas geradas têm respaldo direto no material coletado.
 """
 
+import ast
 import json
 from datetime import date
 
 from openai import OpenAI
 
-from app.config import (
+from config import (
     HOST_A,
     HOST_B,
     LLM_API_KEY,
@@ -30,6 +31,33 @@ def _build_news_block(news_items):
             f"Link: {item['link']}\n"
         )
     return "\n".join(lines)
+
+
+def _parse_json_response(raw_text):
+    """Interpreta JSON puro e respostas quase-JSON comuns em modelos locais."""
+    cleaned = raw_text.strip()
+    if cleaned.startswith("```"):
+        lines = cleaned.splitlines()
+        cleaned = "\n".join(lines[1:-1]).strip()
+
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start >= 0 and end > start:
+        cleaned = cleaned[start:end + 1]
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError as json_error:
+        try:
+            parsed = ast.literal_eval(cleaned)
+        except (SyntaxError, ValueError) as literal_error:
+            raise ValueError(
+                "O modelo nao retornou um objeto JSON valido. "
+                f"Trecho recebido: {cleaned[:300]!r}"
+            ) from literal_error
+        if not isinstance(parsed, dict):
+            raise ValueError("A resposta do modelo nao e um objeto JSON.") from json_error
+        return parsed
 
 
 def generate_script(news_items, client=None):
@@ -105,13 +133,7 @@ fechamento curto. Não mencione que é um texto gerado por IA nem leia os índic
 
     raw_text = response.choices[0].message.content or ""
 
-    # Limpeza defensiva caso o modelo acidentalmente envolva em ```json
-    cleaned = raw_text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.replace("json\n", "", 1)
-
-    script = json.loads(cleaned)
+    script = _parse_json_response(raw_text)
 
     # Monta show notes a partir dos dados que já temos (não depende do LLM
     # para os links, evitando qualquer risco de link inventado).
@@ -169,17 +191,12 @@ ROTEIRO:
     )
 
     raw_text = response.choices[0].message.content or ""
-    cleaned = raw_text.strip()
-    if cleaned.startswith("```"):
-        cleaned = cleaned.strip("`")
-        cleaned = cleaned.replace("json\n", "", 1)
-
-    return json.loads(cleaned)
+    return _parse_json_response(raw_text)
 
 
 if __name__ == "__main__":
-    from app.collector import collect_news
-    from app.dedup import deduplicate_news, rank_and_limit
+    from collector import collect_news
+    from dedup import deduplicate_news, rank_and_limit
 
     news = collect_news()
     deduped = deduplicate_news(news)

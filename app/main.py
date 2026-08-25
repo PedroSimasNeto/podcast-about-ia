@@ -12,11 +12,12 @@ import json
 import os
 from datetime import date
 
-from app.collector import collect_news
-from app.dedup import deduplicate_news, rank_and_limit
-from app.script_generator import generate_script, audit_script
-from app.audio_generator import generate_audio
-from app.config import PODCAST_NAME
+from collector import collect_news
+from dedup import deduplicate_news, rank_and_limit
+from script_generator import generate_script, audit_script
+from audio_generator import generate_audio
+from config import PODCAST_NAME
+from news_history import NewsHistory
 
 OUTPUT_DIR = "output"
 
@@ -50,6 +51,9 @@ def save_outputs(script, audit):
 
 
 def run():
+    history = NewsHistory()
+    history.bootstrap_from_outputs(OUTPUT_DIR)
+
     print("1/4 Coletando notícias...")
     news = collect_news()
     print(f"   {len(news)} itens brutos coletados.")
@@ -77,6 +81,7 @@ def run():
     print(f"Arquivos salvos em '{OUTPUT_DIR}':\n- {json_path}\n- {md_path}")
     print("5/5 Gerando áudio do episódio...")
     audio_path = generate_audio(json_path)
+    history.mark_seen(top_news)
     print(f"\nConcluído. Arquivos gerados:\n- {json_path}\n- {md_path}\n- {audio_path}")
 
 

@@ -5,7 +5,7 @@ número máximo de itens configurado.
 """
 
 from difflib import SequenceMatcher
-from app.config import MAX_NEWS_ITEMS
+from config import MAX_NEWS_ITEMS
 
 
 def _similarity(a, b):
@@ -57,7 +57,7 @@ def rank_and_limit(news_items, max_items=None):
 
 
 if __name__ == "__main__":
-    from app.collector import collect_news
+    from collector import collect_news
     import json
 
     news = collect_news()

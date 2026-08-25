@@ -9,7 +9,7 @@ import tempfile
 import edge_tts
 from pydub import AudioSegment
 
-from app.config import HOST_A, HOST_B
+from config import HOST_A, HOST_B
 
 
 VOICE_BY_SPEAKER = {

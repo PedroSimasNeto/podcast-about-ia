@@ -1,5 +1,6 @@
 app/output/*.json
 app/output/*.mp3
 app/output/*.md
+app/output/*.sqlite3
 *__pycache__/*
 .venv

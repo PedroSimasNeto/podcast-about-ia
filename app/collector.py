@@ -8,7 +8,8 @@ import time
 from datetime import datetime, timezone, timedelta
 import feedparser
 
-from app.config import RSS_FEEDS, KEYWORDS, LOOKBACK_HOURS
+from config import RSS_FEEDS, KEYWORDS, LOOKBACK_HOURS
+from news_history import filter_unseen
 
 
 def _entry_datetime(entry):
@@ -97,7 +98,7 @@ def collect_news(feeds=None, keywords=None, lookback_hours=None):
                 "published": published.isoformat() if published else None,
             })
 
-    return collected
+    return filter_unseen(collected)
 
 
 if __name__ == "__main__":
