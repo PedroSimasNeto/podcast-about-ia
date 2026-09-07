@@ -35,6 +35,16 @@ KEYWORDS = [
 # Quantas notícias no máximo entram no roteiro final (evita episódios gigantes)
 MAX_NEWS_ITEMS = 10
 
+# Categorias priorizadas na seleção diária. A ordem também ajuda a equilibrar
+# produtos, ideias novas, impactos concretos e movimentos das big techs.
+NEWS_TOPIC_PRIORITY = [
+    "produto",
+    "bigtech",
+    "impacto",
+    "ideia",
+    "negocios",
+]
+
 # Quantas horas de "janela" considerar como "notícia de hoje"
 LOOKBACK_HOURS = 26  # um pouco mais de 24h pra cobrir fuso/atraso de publicação
 

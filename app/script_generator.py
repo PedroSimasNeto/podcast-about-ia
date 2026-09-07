@@ -94,22 +94,42 @@ um fato de uma notícia deve registrar esse índice no campo "refs".
 3. Escreva como uma conversa real gravada, não como uma lista de notícias. Cada fala deve \
 reagir ao que o outro acabou de dizer: concorde, faça uma pergunta de acompanhamento, \
 complete uma ideia ou mude de assunto com uma transição natural.
-4. Varie o ritmo: alterne falas curtas e médias, use perguntas espontâneas, comentários \
-breves e explicações mais completas. Evite que os apresentadores repitam o título da \
-notícia ou usem sempre a mesma estrutura de pergunta e resposta.
-5. Mantenha os apresentadores humanos e distintos. Diego pode demonstrar surpresa, dúvida \
-ou humor leve; Marina pode esclarecer e contextualizar sem transformar cada resposta em \
-uma palestra. Use expressões naturais em português falado, mas sem exagerar em gírias, \
-interjeições ou reticências.
-6. Em geral, cada fala deve ter de uma a três frases e tratar de uma ideia principal. \
-Evite parágrafos longos, listas e frases com muitas informações encadeadas, pois o texto \
-será narrado em voz alta.
-7. Não faça uma fala por notícia obrigatoriamente. Agrupe assuntos relacionados e deixe \
+4. Preserve no idioma original todos os nomes próprios de origem estrangeira, especialmente \
+nomes de pessoas, empresas, marcas, produtos, modelos, laboratórios e lugares. Não traduza, \
+aportuguese, adapte ou substitua nomes como "OpenAI", "Google DeepMind", "Stable Diffusion", \
+"ChatGPT", "Llama" ou "Sam Altman". Siglas e termos que funcionam como nomes também devem \
+permanecer como na fonte. A frase ao redor deve continuar em português.
+5. Escreva para ser falado em voz alta: frases com ritmo variado, pontuação natural e \
+palavras simples. Quando um nome estrangeiro aparecer, mantenha sua grafia original para \
+que a narração tente dizê-lo em inglês; nunca escreva uma tradução fonética ou uma versão \
+aportuguesada do nome.
+6. Mantenha os apresentadores humanos e distintos. Diego pode demonstrar surpresa, dúvida, \
+curiosidade ou humor leve; Marina pode esclarecer e contextualizar sem transformar cada \
+resposta em uma palestra. Use português falado natural, sem bordões repetidos, gírias \
+excessivas ou reticências.
+7. Faça cada fala nascer da anterior: retome uma palavra ou ideia que o outro acabou de \
+mencionar, responda primeiro ao ponto principal e só então avance. Use interrupções leves, \
+concordâncias, discordâncias educadas, perguntas espontâneas e pequenas reações. Não faça \
+Diego perguntar genericamente "o que isso significa?" em toda notícia, nem faça Marina \
+responder sempre com "sim, é verdade".
+8. Varie o ritmo: alterne falas curtas e médias, comentários breves e explicações completas. \
+Evite repetir títulos, fazer uma sequência de pergunta e resposta ou transformar o episódio \
+em uma lista de manchetes. Em geral, cada fala deve ter de uma a três frases e uma ideia \
+principal, sem listas ou muitas informações encadeadas.
+9. Dê cobertura equilibrada ao conjunto inteiro: mencione todas as notícias fornecidas ao \
+menos uma vez, sem deixar que duas notícias sobre o mesmo produto, empresa ou assunto \
+ocupem quase todo o episódio. Separe os blocos por tema e dê prioridade a lançamentos, \
+novas ideias, impactos concretos e novidades recentes de big techs. Se houver várias \
+notícias sobre o mesmo assunto, trate-as como um único bloco e use as demais para variar \
+o episódio.
+10. Não faça uma fala por notícia obrigatoriamente. Agrupe assuntos relacionados e deixe \
 uma notícia render uma troca de duas ou três falas quando isso ajudar a conversa. Cubra \
-todas as notícias, mas não force comentários quando o material não sustentar uma reação.
-8. Inclua uma abertura curta e calorosa, uma transição entre blocos de assunto e um \
-fechamento curto. Não mencione que é um texto gerado por IA nem leia os índices das fontes.
-9. Responda APENAS com um JSON válido, sem markdown, sem texto antes ou depois, no formato:
+todo o conjunto com transições naturais, mas não force comentários quando o material não \
+sustentar uma reação.
+11. Inclua uma abertura curta e calorosa, transições que conectem os assuntos e um fechamento \
+curto. Gere no máximo 16 falas, com no máximo duas frases curtas em cada fala. Não mencione \
+que é um texto gerado por IA nem leia os índices das fontes.
+12. Responda APENAS com um JSON válido, sem markdown, sem texto antes ou depois, no formato:
 
 {{
   "episode_title": "string",
@@ -122,18 +142,39 @@ fechamento curto. Não mencione que é um texto gerado por IA nem leia os índic
 
     user_prompt = f"Data de hoje: {today}\n\nNotícias coletadas:\n\n{news_block}"
 
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_prompt},
+    ]
     response = client.chat.completions.create(
         model=LLM_MODEL,
-        max_tokens=4000,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ],
+        max_tokens=5000,
+        response_format={"type": "json_object"},
+        messages=messages,
     )
 
     raw_text = response.choices[0].message.content or ""
 
-    script = _parse_json_response(raw_text)
+    try:
+        script = _parse_json_response(raw_text)
+    except ValueError:
+        # Tenta novamente com uma instrução curta caso um modelo local corte a resposta.
+        retry_messages = messages + [
+            {
+                "role": "user",
+                "content": "Retorne novamente o JSON completo, com no maximo 10 falas curtas. "
+                "Nao use aspas escapadas com barra invertida fora de strings JSON.",
+            }
+        ]
+        retry_response = client.chat.completions.create(
+            model=LLM_MODEL,
+            max_tokens=3500,
+            response_format={"type": "json_object"},
+            messages=retry_messages,
+        )
+        script = _parse_json_response(
+            retry_response.choices[0].message.content or ""
+        )
 
     # Monta show notes a partir dos dados que já temos (não depende do LLM
     # para os links, evitando qualquer risco de link inventado).
@@ -187,11 +228,26 @@ ROTEIRO:
     response = client.chat.completions.create(
         model=LLM_MODEL,
         max_tokens=2000,
+        response_format={"type": "json_object"},
         messages=[{"role": "user", "content": audit_prompt}],
     )
 
     raw_text = response.choices[0].message.content or ""
-    return _parse_json_response(raw_text)
+    try:
+        return _parse_json_response(raw_text)
+    except ValueError as error:
+        # A auditoria nao deve impedir que o episodio seja salvo quando o LLM
+        # retornar JSON invalido; sinaliza o retorno para revisao manual.
+        return {
+            "ok": False,
+            "issues": [
+                {
+                    "speaker": "Sistema",
+                    "text_excerpt": "",
+                    "problem": f"Resposta invalida do auditor: {error}",
+                }
+            ],
+        }
 
 
 if __name__ == "__main__":

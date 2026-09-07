@@ -1,0 +1,43 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: 0.0.0.0:11434
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    volumes:
+      - ollama_data:/root/.ollama
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["ollama pull \"$${LLM_MODEL}\""]
+    restart: "no"
+
+  app:
+    build:
+      context: ./app
+    depends_on:
+      ollama-init:
+        condition: service_completed_successfully
+    environment:
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://ollama:11434/v1}
+      LLM_MODEL: ${LLM_MODEL:-llama3.2:3b}
+      LLM_API_KEY: ${LLM_API_KEY:-ollama}
+    volumes:
+      - ./app/output:/app/output
+
+volumes:
+  ollama_data:

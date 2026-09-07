@@ -16,6 +16,28 @@ main.py                 # Orquestra o pipeline completo
 
 ## Instalação
 
+### Docker Compose (recomendado)
+
+O Compose instala Python, todas as dependências do projeto, `ffmpeg` e o Ollama.
+Na primeira execução, o modelo definido em `LLM_MODEL` é baixado automaticamente:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Os arquivos gerados ficam em `app/output/` e o modelo do Ollama persiste no volume
+`ollama_data`. Para executar novamente depois da instalação:
+
+```bash
+docker compose up
+```
+
+Por padrão é usado `llama3.2:3b`. Para trocar o modelo, altere `LLM_MODEL` no `.env`.
+O Compose roda em CPU por padrão e também funciona em setups sem GPU.
+
+### Instalação local
+
 ```bash
 pip install -r requirements.txt
 ```
